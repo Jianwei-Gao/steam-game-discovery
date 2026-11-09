@@ -1,5 +1,7 @@
 .venv
 .vscode
 .env
-crawler/steam_data/
-crawler/steam_state.db
+steam_data
+steam_state.db
+*.parquet
+qdrant_data

@@ -21,7 +21,8 @@ LIMIT = int(os.getenv("LIMIT", "0"))
 class Throttle:
     def __init__(self, interval, backoff):
         self.interval, self.backoff, self.last = interval, backoff, 0.0
-
+        self.session = requests.Session()
+        
     def get(self, url, params, rate_codes):
         while True:
             wait = self.interval - (time.time() - self.last)
@@ -29,7 +30,9 @@ class Throttle:
                 time.sleep(wait)
             self.last = time.time()
             try:
-                r = requests.get(url, params=params, timeout=30)
+                r = self.session.get(url, params=params, timeout=30)
+                # r = requests.get(url, params=params, timeout=30)
+                # print(r.elapsed.total_seconds())
             except requests.RequestException as e:
                 print(f"  network error ({e}); waiting {self.backoff}s")
                 time.sleep(self.backoff); continue
@@ -66,8 +69,8 @@ def save_json(path, obj):
         json.dump(obj, f, ensure_ascii=False, indent=2)
     os.replace(tmp, path)
 
-def process(appid, t):
-    resp = get_reviews(t, appid)
+def process(appid, t_review, t_detail):
+    resp = get_reviews(t_review, appid)
     body = resp.get("response", resp)
     total = int(body.get("query_summary", {}).get("total_reviews", 0) or 0)
     if total < MIN_REVIEWS:
@@ -76,7 +79,7 @@ def process(appid, t):
     if body.get("day_range_used", 0) != 0:
         print(f"  warning: day_range_used={body.get('day_range_used')} (expected 0)")
 
-    details = t.get(DETAILS_URL, dict(appids=appid, l="english"), {429, 403})
+    details = t_detail.get(DETAILS_URL, dict(appids=appid, l="english"), {429, 403})
     save_json(os.path.join(OUT, "reviews", f"{appid}.json"), resp)
     save_json(os.path.join(OUT, "details", f"{appid}.json"), details)
     return "fetched", total
@@ -85,7 +88,8 @@ def main():
     os.makedirs(os.path.join(OUT, "reviews"), exist_ok=True)
     os.makedirs(os.path.join(OUT, "details"), exist_ok=True)
     db = sqlite3.connect(DB_PATH)
-    t = Throttle(INTERVAL, BACKOFF)
+    t_review = Throttle(INTERVAL, BACKOFF)
+    t_detail = Throttle(0, BACKOFF)
     failures, done = {}, 0
 
     while True:
@@ -97,7 +101,7 @@ def main():
             break
         appid, name = row
         try:
-            status, total = process(appid, t)
+            status, total = process(appid, t_review, t_detail)
         except Exception as e:
             failures[appid] = str(e)
             print(f"[{appid}] {name}: error {e} (left in queue)")

@@ -1,2 +1,7 @@
 requests
 dotenv
+pandas 
+pyarrow 
+bs4
+qdrant_client
+

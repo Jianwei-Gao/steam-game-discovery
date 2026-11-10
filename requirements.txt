@@ -1,6 +1,7 @@
 beautifulsoup4
 numpy
 pandas
+pyarrow
 python-dotenv
 qdrant_client
 Requests

@@ -24,7 +24,7 @@ from qdrant_client.models import (
 DESCRIPTION_COLLECTION = "game_descriptions"
 REVIEW_COLLECTION = "game_reviews"
 ZERO_GUARD = 1e-12
-SCROLL_SIZE = 5000
+SCROLL_SIZE = 50000
 
 def _cosine(a: np.ndarray, b: np.ndarray) -> float:
     na = np.linalg.norm(a)
@@ -42,7 +42,7 @@ def _pairwise_cosine(va: np.ndarray, vb: np.ndarray) -> np.ndarray:
 
 class GameRecommender:
     def __init__(self, client: QdrantClient | None = None):
-        self.client = client or QdrantClient(host="localhost", port=6333, grpc_port=6334, prefer_grpc=True)
+        self.client = client or QdrantClient(host="localhost", port=6333, grpc_port=6334, prefer_grpc=True, timeout=30.0)
         self._name_to_appid: dict[str, int] | None = None 
         self._desc_cache = None 
         self._review_cache = None 
@@ -72,9 +72,10 @@ class GameRecommender:
                 break        
 
     def _build_desc_cache(self) -> None:
-        if self._desc is not None:
-            return self._desc
+        if self._desc_cache is not None:
+            return self._desc_cache
         
+        print("first desc call")
         appids, names, review_score, vectors = [], [], [], []
         offset = None
         while True:
@@ -99,12 +100,14 @@ class GameRecommender:
             np.array(review_score, dtype=np.int64), 
             M
         )
-        return self._desc
+        print("return desc call")
+        return self._desc_cache
     
     def _build_review_cache(self) -> None:
         if self._review_cache is not None:
             return self._review_cache
         
+        print("first review call")
         buckets: dict[int, list] = {}
         offset = None
         while True:
@@ -133,6 +136,7 @@ class GameRecommender:
         centroid_norm = np.linalg.norm(mean_unit, axis=1)
         
         self._review_cache = (review_tensor, appids, mean_unit, centroid_norm)
+        print("return desc call")
         return self._review_cache
 
     def get_appid(self, id) -> int:
@@ -242,25 +246,28 @@ class GameRecommender:
     #     col_max_sum = cos.max(axis=0).sum()            # sum_j max_i
     #     return float((row_max_sum + col_max_sum) / (len(va) + len(vb)))
     
-    def _all_description_scores(self, query_vec: np.ndarray) -> list[dict]:
-        appids, names, review_scores, vectors = [], [], [], []
-        offset = None
-        while True:
-            records, offset = self.client.scroll(
-                collection_name=DESCRIPTION_COLLECTION,
-                limit=SCROLL_SIZE, 
-                offset=offset,
-                with_payload=["appid", "name", "review_score"],
-                with_vectors=True,
-            )
-            for p in records:
-                appids.append(int(p.payload["appid"]))
-                names.append(p.payload["name"])
-                review_scores.append(int(p.payload["review_score"]))
-                vectors.append(p.vector)
-            if offset is None:
-                break
-            
+    def _all_description_scores(self, query_vec: np.ndarray) -> tuple[list, list, list, list]:
+        # appids, names, review_scores, vectors = [], [], [], []
+        # offset = None
+        # while True:
+        #     records, offset = self.client.scroll(
+        #         collection_name=DESCRIPTION_COLLECTION,
+        #         limit=SCROLL_SIZE, 
+        #         offset=offset,
+        #         with_payload=["appid", "name", "review_score"],
+        #         with_vectors=True,
+        #     )
+        #     for p in records:
+        #         appids.append(int(p.payload["appid"]))
+        #         names.append(p.payload["name"])
+        #         review_scores.append(int(p.payload["review_score"]))
+        #         vectors.append(p.vector)
+        #     if offset is None:
+        #         break
+        
+        
+        appids, names, review_scores, vectors = self._build_desc_cache()
+        
         M = np.asarray(vectors, dtype=np.float32)
         desc_scores = (M @ query_vec)
         return appids, names, review_scores, desc_scores
@@ -309,16 +316,16 @@ class GameRecommender:
             ]
             
         query_vec = np.asarray(query_point.vector, dtype=np.float32)
-        desc_appid, name, review_scores, desc_sim = self._all_description_scores
+        desc_appid, name, review_scores, desc_sim = self._all_description_scores(query_vec)
         review_appid, review_sim = self.review_similarity(appid, 2)
         
-        desc_appids = np.asarray(desc_appids, dtype=np.int64)
+        desc_appid = np.asarray(desc_appid, dtype=np.int64)
         review_scores = np.asarray(review_scores, dtype=np.int64)
         desc_sim = np.asarray(desc_sim, dtype=np.float32)
         
         review_lookup = dict(zip(review_appid.tolist(), review_sim.tolist()))
         review_sim = np.array(
-            [review_lookup.get(i, 0.0) for i in desc_appids.tolist()], dtype=np.float32
+            [review_lookup.get(i, 0.0) for i in desc_appid.tolist()], dtype=np.float32
         )
         
         combined = alpha * desc_sim + (1-alpha) * review_sim
@@ -326,7 +333,7 @@ class GameRecommender:
         order = np.argsort(-combined)
         results = []
         for i in order:
-            aid = int(desc_appids[i])
+            aid = int(desc_appid[i])
             if aid == appid:
                 continue
             results.append({

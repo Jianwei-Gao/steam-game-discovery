@@ -62,7 +62,7 @@ def main():
     
     #create qdrant database
     print("creating vector database")
-    client = QdrantClient(host="localhost", port=6333)
+    client = QdrantClient(host="localhost", port=6333, grpc_port=6334, prefer_grpc=True, timeout=30.0)
     client.recreate_collection(
         collection_name="game_descriptions",
         vectors_config=VectorParams(size=desc_vector_size, distance=Distance.COSINE)

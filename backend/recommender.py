@@ -93,13 +93,11 @@ class GameRecommender:
             if offset is None:
                 break
         M = np.asarray(vectors, dtype=np.float32)
-        norms = np.linalg.norm(M, axis=1, keepdims=True) + ZERO_GUARD
         self._desc_cache = (
             np.array(appids, dtype=np.int64), 
             names,
             np.array(review_score, dtype=np.int64), 
-            M, 
-            norms
+            M
         )
         return self._desc
     
@@ -131,8 +129,10 @@ class GameRecommender:
         
         assert review_tensor.shape == (len(appids), reviews_per_game, vector_size)
         
-        norms = np.linalg.norm(review_tensor, axis=2) + ZERO_GUARD
-        self._review_cache = (review_tensor, norms, appids)
+        mean_unit = review_tensor.mean(axis=1)
+        centroid_norm = np.linalg.norm(mean_unit, axis=1)
+        
+        self._review_cache = (review_tensor, appids, mean_unit, centroid_norm)
         return self._review_cache
 
     def get_appid(self, id) -> int:
@@ -171,66 +171,76 @@ class GameRecommender:
         hits = [h for h in response.points if h.id != query_point.id]
         return hits[:n]
 
-    def review_similarity(self, query_appid, query_point: ScoredPoint, method = 3):
-        tensor, norms, appid = self._build_review_cache()
-        num_game, reviews_per_game, vector_size = tensor.shape
-        query_vect = np.asarray(query_point.vector, dtype=np.float32)
-        
-        dot = None 
-        cos = None 
+    def review_similarity(self, query_appid, method = 2):
+        tensor, appid, mean_unit, centroid_norm = self._build_review_cache()
+    
+        query_index = np.searchsorted(appid, query_appid)
+        if query_index >= len(appid) or query_index < 0 or appid[query_index] != query_appid:
+            raise ValueError(f"No reviews cached for appid {query_appid}")
         
         scores = None 
+        #centroid
         if method == 0:
-            pass
+            q_centroid = mean_unit[query_index]
+            q_centroid_norm = centroid_norm[query_index]
+            scores = (mean_unit @ q_centroid) / (centroid_norm * q_centroid_norm)
+        
+        #pairwise
         elif method == 1:
-            pass            
+            q = tensor[query_index]
+            cos = tensor @ q.T 
+            scores = cos.mean(axis=(1,2))
+            
+        #best match           
         elif method == 2:
-            pass 
+            q = tensor[query_index]
+            cos = tensor @ q.T 
+            row_max_sum = cos.max(axis=2).sum(axis=1)
+            col_max_sum = cos.max(axis=1).sum(axis=1)
+            scores = (row_max_sum + col_max_sum)/20.0
+             
         else:
             raise ValueError(method)
 
-        query_index = np.searchsorted(appid, query_appid)
-        if appid[query_index] == query_appid:
-            scores[query_index] = 0
-            
+        scores[query_index] = 0.0
         return appid, scores
         
-    @staticmethod
-    def review_centroid_similarity(va: np.ndarray, vb: np.ndarray) -> float:
-        """
-        Using Cos(mean_i a_i, mean_j b_j)
-        Return cosine similarity of the two games' review centroids.
-        """
-        if len(va) == 0 or len(vb) == 0:
-            return 0.0
-        return _cosine(va.mean(axis=0), vb.mean(axis=0))
+    # @staticmethod
+    # def review_centroid_similarity(va: np.ndarray, vb: np.ndarray) -> float:
+    #     """
+    #     Using Cos(mean_i a_i, mean_j b_j)
+    #     Return cosine similarity of the two games' review centroids.
+    #     """
+    #     if len(va) == 0 or len(vb) == 0:
+    #         return 0.0
+    #     return _cosine(va.mean(axis=0), vb.mean(axis=0))
 
-    @staticmethod
-    def review_pairwise_similarity(va: np.ndarray, vb: np.ndarray) -> float | None:
-        """
-        Using (1 / (n_a * n_b)) * sum_i sum_j cos(a_i, b_j)
-        Mean of the full pairwise cosine matrix.
-        """
-        if len(va) == 0 or len(vb) == 0:
-            return 0.0
-        cos = _pairwise_cosine(va, vb)
-        return float(cos.mean())
+    # @staticmethod
+    # def review_pairwise_similarity(va: np.ndarray, vb: np.ndarray) -> float | None:
+    #     """
+    #     Using (1 / (n_a * n_b)) * sum_i sum_j cos(a_i, b_j)
+    #     Mean of the full pairwise cosine matrix.
+    #     """
+    #     if len(va) == 0 or len(vb) == 0:
+    #         return 0.0
+    #     cos = _pairwise_cosine(va, vb)
+    #     return float(cos.mean())
 
-    @staticmethod
-    def review_mutual_best_match_similarity(va: np.ndarray, vb: np.ndarray) -> float:
-        """
-        Using
-            (1 / (n_a + n_b)) * 
-            (sum_i max_j cos(a_i, b_j) + sum_j max_i cos(a_i, b_j))
-        Match review to a best match against other game's reivews;
-        Return mean over all reviews of both games.
-        """
-        if len(va) == 0 or len(vb) == 0:
-            return 0.0
-        cos = _pairwise_cosine(va, vb)         
-        row_max_sum = cos.max(axis=1).sum()            # sum_i max_j
-        col_max_sum = cos.max(axis=0).sum()            # sum_j max_i
-        return float((row_max_sum + col_max_sum) / (len(va) + len(vb)))
+    # @staticmethod
+    # def review_mutual_best_match_similarity(va: np.ndarray, vb: np.ndarray) -> float:
+    #     """
+    #     Using
+    #         (1 / (n_a + n_b)) * 
+    #         (sum_i max_j cos(a_i, b_j) + sum_j max_i cos(a_i, b_j))
+    #     Match review to a best match against other game's reivews;
+    #     Return mean over all reviews of both games.
+    #     """
+    #     if len(va) == 0 or len(vb) == 0:
+    #         return 0.0
+    #     cos = _pairwise_cosine(va, vb)         
+    #     row_max_sum = cos.max(axis=1).sum()            # sum_i max_j
+    #     col_max_sum = cos.max(axis=0).sum()            # sum_j max_i
+    #     return float((row_max_sum + col_max_sum) / (len(va) + len(vb)))
     
     def _all_description_scores(self, query_vec: np.ndarray) -> list[dict]:
         appids, names, review_scores, vectors = [], [], [], []
@@ -252,9 +262,7 @@ class GameRecommender:
                 break
             
         M = np.asarray(vectors, dtype=np.float32)
-        norm = np.linalg.norm(M, axis=1) + ZERO_GUARD
-        q = query_vec / (np.linalg.norm(query_vec) + ZERO_GUARD)
-        desc_scores = (M @ q) / norm
+        desc_scores = (M @ query_vec)
         return appids, names, review_scores, desc_scores
     
     def _all_review_vectors(self) -> dict[int, np.ndarray]:
@@ -301,29 +309,37 @@ class GameRecommender:
             ]
             
         query_vec = np.asarray(query_point.vector, dtype=np.float32)
-        appids, names, review_scores, desc_scores = self._all_description_scores(query_vec)
-        all_reviews = self._all_review_vectors()   
-        qa = all_reviews.get(appid)       
-
+        desc_appid, name, review_scores, desc_sim = self._all_description_scores
+        review_appid, review_sim = self.review_similarity(appid, 2)
+        
+        desc_appids = np.asarray(desc_appids, dtype=np.int64)
+        review_scores = np.asarray(review_scores, dtype=np.int64)
+        desc_sim = np.asarray(desc_sim, dtype=np.float32)
+        
+        review_lookup = dict(zip(review_appid.tolist(), review_sim.tolist()))
+        review_sim = np.array(
+            [review_lookup.get(i, 0.0) for i in desc_appids.tolist()], dtype=np.float32
+        )
+        
+        combined = alpha * desc_sim + (1-alpha) * review_sim
+        
+        order = np.argsort(-combined)
         results = []
-        for aid, name, rscore, dscore in zip(appids, names, review_scores, desc_scores):
+        for i in order:
+            aid = int(desc_appids[i])
             if aid == appid:
                 continue
-            vb = all_reviews.get(aid)
-            if qa is None or vb is None:
-                combined = dscore
-            else:
-                review_score = self.review_mutual_best_match_similarity(qa, vb)
-                combined = dscore if review_score is None else alpha * dscore + (1 - alpha) * review_score
             results.append({
                 "appid": aid,
-                "name": name,
-                "review_score": rscore,
-                "score": combined,
+                "name": name[i],
+                "review_score": int(review_scores[i]),
+                "score": float(combined[i]),
             })
+            if len(results) >= n:
+                break
 
-        results.sort(key=lambda r: r["score"], reverse=True)
-        return results[:n]
+        return results
+        
 
 if __name__ == "__main__":
     rec = GameRecommender()

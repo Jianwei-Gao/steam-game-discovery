@@ -57,6 +57,7 @@ def main():
 
     review_merged = review_merged.dropna(subset=["review_text", "review_embedding"])
     review_merged["review_length"] = review_merged["review_text"].astype(str).str.len()
+    review_merged = review_merged[review_merged.groupby("appid")["review_slot"].transform("size") == 10]
     review_vector_size = len(review_merged.iloc[0]["review_embedding"])
     
     #create qdrant database

@@ -43,8 +43,9 @@ def _pairwise_cosine(va: np.ndarray, vb: np.ndarray) -> np.ndarray:
 class GameRecommender:
     def __init__(self, client: QdrantClient | None = None):
         self.client = client or QdrantClient(host="localhost", port=6333, grpc_port=6334, prefer_grpc=True)
-        self._name_to_appid: dict[str, int] | None = None
-        self.review_index = None 
+        self._name_to_appid: dict[str, int] | None = None 
+        self._desc_cache = None 
+        self._review_cache = None 
         
     def _build_name_to_appid(self) -> None:
         if self._name_to_appid is not None:
@@ -68,28 +69,71 @@ class GameRecommender:
                 # On name collisions, keep the first one seen
                 self._name_to_appid.setdefault(key, r.payload["appid"])
             if offset is None:
-                break
+                break        
+
+    def _build_desc_cache(self) -> None:
+        if self._desc is not None:
+            return self._desc
         
-    def _fetch_review(self, appid: int) -> np.ndarray:
-        points: list[ScoredPoint] = []
+        appids, names, review_score, vectors = [], [], [], []
+        offset = None
+        while True:
+            records, offset = self.client.scroll(
+                collection_name=DESCRIPTION_COLLECTION, 
+                limit=SCROLL_SIZE,
+                offset=offset, 
+                with_payload=["appid", "name", "review_score"],
+                with_vectors=True,
+            )
+            for p in records:
+                appids.append(int(p.payload["appid"]))
+                names.append(p.payload["name"])
+                review_score.append(int(p.payload["review_score"]))
+                vectors.append(p.vector)
+            if offset is None:
+                break
+        M = np.asarray(vectors, dtype=np.float32)
+        norms = np.linalg.norm(M, axis=1, keepdims=True) + ZERO_GUARD
+        self._desc_cache = (
+            np.array(appids, dtype=np.int64), 
+            names,
+            np.array(review_score, dtype=np.int64), 
+            M, 
+            norms
+        )
+        return self._desc
+    
+    def _build_review_cache(self) -> None:
+        if self._review_cache is not None:
+            return self._review_cache
+        
+        buckets: dict[int, list] = {}
         offset = None
         while True:
             records, offset = self.client.scroll(
                 collection_name=REVIEW_COLLECTION,
-                scroll_filter=Filter(
-                    must=[FieldCondition(key="appid", match=MatchValue(value=appid))]
-                ),
                 limit=SCROLL_SIZE,
                 offset=offset,
-                with_payload=False,
+                with_payload=['appid'],
                 with_vectors=True,
             )
-            points.extend(records)
+            for p in records:
+                buckets.setdefault(int(p.payload["appid"]), []).append(p.vector)
             if offset is None:
                 break
-        if not points:
-            return np.empty((0, 0), dtype=np.float32)
-        return np.array([p.vector for p in points], dtype=np.float32)
+        
+        reviews_per_game = 10 
+        appids = np.array(sorted(buckets), dtype=np.int64)
+        vector_size = len(buckets[int(appids[0])][0])
+        review_tensor = np.stack(
+            [np.asarray(buckets[i], dtype=np.float32) for i in appids.tolist()]
+        )
+        
+        assert review_tensor.shape == (len(appids), reviews_per_game, vector_size)
+        
+        norms = np.linalg.norm(review_tensor, axis=2) + ZERO_GUARD
+        self._review_cache = (review_tensor, norms, appids)
+        return self._review_cache
 
     def get_appid(self, id) -> int:
         if isinstance(id, int):
@@ -127,6 +171,30 @@ class GameRecommender:
         hits = [h for h in response.points if h.id != query_point.id]
         return hits[:n]
 
+    def review_similarity(self, query_appid, query_point: ScoredPoint, method = 3):
+        tensor, norms, appid = self._build_review_cache()
+        num_game, reviews_per_game, vector_size = tensor.shape
+        query_vect = np.asarray(query_point.vector, dtype=np.float32)
+        
+        dot = None 
+        cos = None 
+        
+        scores = None 
+        if method == 0:
+            pass
+        elif method == 1:
+            pass            
+        elif method == 2:
+            pass 
+        else:
+            raise ValueError(method)
+
+        query_index = np.searchsorted(appid, query_appid)
+        if appid[query_index] == query_appid:
+            scores[query_index] = 0
+            
+        return appid, scores
+        
     @staticmethod
     def review_centroid_similarity(va: np.ndarray, vb: np.ndarray) -> float:
         """
@@ -182,10 +250,11 @@ class GameRecommender:
                 vectors.append(p.vector)
             if offset is None:
                 break
-        v = np.asarray(vectors, dtype=np.float32)
-        norm = np.linalg.norm(v, axis=1) + ZERO_GUARD
+            
+        M = np.asarray(vectors, dtype=np.float32)
+        norm = np.linalg.norm(M, axis=1) + ZERO_GUARD
         q = query_vec / (np.linalg.norm(query_vec) + ZERO_GUARD)
-        desc_scores = (v @ q) / norm
+        desc_scores = (M @ q) / norm
         return appids, names, review_scores, desc_scores
     
     def _all_review_vectors(self) -> dict[int, np.ndarray]:
@@ -255,9 +324,6 @@ class GameRecommender:
 
         results.sort(key=lambda r: r["score"], reverse=True)
         return results[:n]
-
-
-
 
 if __name__ == "__main__":
     rec = GameRecommender()

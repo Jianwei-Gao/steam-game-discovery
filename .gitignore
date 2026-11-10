@@ -1,7 +1,10 @@
 .venv
 .vscode
 .env
-steam_data
-steam_state.db
-*.parquet
+
+data/steam_data/*
+data/steam_state.db
+data/steam_state/*.parquet
+!data/steam_data/.gitkeep
+
 qdrant_data

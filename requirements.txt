@@ -1,7 +1,6 @@
-requests
-dotenv
-pandas 
-pyarrow 
-bs4
+beautifulsoup4
+numpy
+pandas
+python-dotenv
 qdrant_client
-
+Requests

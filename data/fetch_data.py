@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Per app: 1x IUserReviewsService/GetAppReviews (count + top English reviews, all dates),
-then 1x appdetails if total_reviews >= MIN_REVIEWS. Config from .env."""
 import json, os, time, sqlite3, requests
 from dotenv import load_dotenv
 
@@ -50,7 +48,7 @@ def get_reviews(t, appid):
     payload = {
         "appid": appid,
         "filter": 0,                  # Helpful
-        "day_range": 0,               # 0 = no limit (all dates)
+        "day_range": 0,               # no limit
         "languages": ["english"],
         "review_type": 0,
         "purchase_type": 1,

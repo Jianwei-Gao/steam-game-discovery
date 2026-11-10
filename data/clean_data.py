@@ -22,7 +22,7 @@ import sys
 from multiprocessing import Pool
 from pathlib import Path
 
-# ---- BeautifulSoup with lxml preferred, html.parser fallback ----------------
+#BeautifulSoup with lxml, html.parser fallback 
 try:
     from bs4 import BeautifulSoup
     try:
@@ -36,8 +36,6 @@ except ImportError:
 
 import pandas as pd
 
-# ---- HTML filtering configuration -----------------------------------------
-# Tags whose entire subtree is embedded media / non-description noise.
 STRIP_TAGS = [
     "script", "style", "noscript", "link", "meta", "head",
     "video", "audio", "source", "track", "img", "picture",
@@ -50,16 +48,14 @@ URL_PATTERN = re.compile(r"https?://\S+")
 
 def clean_html(html_str: str, keep_unicode_letters: bool = True) -> str:
     """
-    Return a single-line, alphanumeric-only version of a chunk of
-    Steam-flavoured HTML.
+    Return a single-line, alphanumeric-only text from html str.
 
-    - Embedded media / non-description tags are dropped entirely.
-    - The text inside <p>, <h1..h6>, <ul>/<li>, <b>, <i>, … is kept.
-    - Literal URLs are removed.
-    - Every non-alphanumeric, non-whitespace character is replaced by a
-      space (so word boundaries survive: "Hello,world" -> "Hello world").
-    - All whitespace runs (\n, \r\n, \t, multiple spaces) collapse to
-      a single space, and the result is stripped.
+    Embedded media and tags are dropped.
+    The text inside <p>, <h1..h6>, <ul>/<li>, <b>, <i>, … is kept.
+    URLs are removed.
+    Apostrophes are removed.
+    Every non-alphanumeric, non-whitespace character is replaced by a space.
+    All whitespace collapse to a single space.
     """
     if not html_str or not isinstance(html_str, str):
         return ""
@@ -74,13 +70,9 @@ def clean_html(html_str: str, keep_unicode_letters: bool = True) -> str:
 
     text = soup.get_text(separator=" ")
 
-    # Strip URLs *before* the alnum filter — otherwise "https" survives
-    # as a word and the rest of the URL leaves stray fragments.
     text = URL_PATTERN.sub(" ", text)
     text = re.sub(r"['’`´]", "", text)          # apostrophes removed
     
-    # Replace every non-alnum, non-whitespace char with a space so that
-    # punctuation becomes a word separator rather than a word-joiner.
     if keep_unicode_letters:
         text = "".join(c if (c.isalnum() or c.isspace()) else " " for c in text)
     else:
@@ -89,11 +81,10 @@ def clean_html(html_str: str, keep_unicode_letters: bool = True) -> str:
             for c in text
         )
 
-    # Collapse all whitespace (newlines included) to single spaces.
+    # Collapse all whitespace
     text = re.sub(r"\s+", " ", text).lower().strip()
     return text
 
-# ---- Per-file processors ---------------------------------------------------
 def process_description_file(filepath: str):
     """Return a list of row dicts (one per appid entry in the file)."""
     rows = []
@@ -101,7 +92,7 @@ def process_description_file(filepath: str):
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
     except Exception as e:
-        print(f"[desc] could not read {filepath}: {e}", file=sys.stderr)
+        print(f"could not read {filepath}: {e}", file=sys.stderr)
         return rows
 
     if not isinstance(data, dict):
@@ -137,7 +128,6 @@ def process_description_file(filepath: str):
 
 
 def _extract_appid(filepath: str) -> int | None:
-    """Review files are named {appid}.json, so the stem IS the appid."""
     stem = Path(filepath).stem
     if not stem.isdigit():
         print(f"[rev] filename is not a numeric appid: {filepath}", file=sys.stderr)
@@ -171,7 +161,6 @@ def process_review_file(filepath: str):
     return row
 
 
-# ---- Driver ---------------------------------------------------------------
 def _iter_json_files(directory: str):
     d = Path(directory)
     if not d.is_dir():
@@ -189,7 +178,7 @@ def main():
                     help="multiprocessing workers (1 = single process)")
     args = ap.parse_args()
 
-    # ---------------- Descriptions -------------------------------------
+    # Description
     desc_files = list(_iter_json_files(args.desc_dir))
     print(f"Description files: {len(desc_files)}")
 
@@ -218,7 +207,7 @@ def main():
 
     del desc_rows, df_desc
 
-    # ---------------- Reviews ------------------------------------------
+    # Reviews
     review_files = list(_iter_json_files(args.review_dir))
     print(f"Review files: {len(review_files)}")
 

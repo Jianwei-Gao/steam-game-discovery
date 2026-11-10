@@ -56,6 +56,7 @@ python recommender.py
 ```
 
 ## Project Structure
+```
 steam-game-discovery/
 ├── backend/
 │   ├── qdrant/
@@ -78,5 +79,5 @@ steam-game-discovery/
 ├── .gitignore
 ├── requirements.txt
 └── README.md
-
+```
 

@@ -1,6 +1,8 @@
 .venv
 .vscode
 .env
+*.zip
+*.7z
 
 data/steam_data/*
 data/steam_state.db

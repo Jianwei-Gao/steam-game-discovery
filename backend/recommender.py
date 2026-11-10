@@ -164,7 +164,7 @@ class GameRecommender:
         col_max_sum = cos.max(axis=0).sum()            # sum_j max_i
         return float((row_max_sum + col_max_sum) / (len(va) + len(vb)))
     
-    def _all_description_scores(self, query_vec: np.ndarray) -> tuple[list[int], list[str], list[int], list[float]]:
+    def _all_description_scores(self, query_vec: np.ndarray) -> list[dict]:
         appids, names, review_scores, vectors = [], [], [], []
         offset = None
         while True:
@@ -232,30 +232,30 @@ class GameRecommender:
             ]
             
         query_vec = np.asarray(query_point.vector, dtype=np.float32)
-        desc_rows = self._all_description_scores(query_vec)
+        appids, names, review_scores, desc_scores = self._all_description_scores(query_vec)
         all_reviews = self._all_review_vectors()   
         qa = all_reviews.get(appid)       
 
         results = []
-        for row in desc_rows:
-            if row["appid"] == appid:
+        for aid, name, rscore, dscore in zip(appids, names, review_scores, desc_scores):
+            if aid == appid:
                 continue
-            vb = all_reviews.get(row["appid"])
+            vb = all_reviews.get(aid)
             if qa is None or vb is None:
-                combined = row["desc_score"]
+                combined = dscore
             else:
                 review_score = self.review_mutual_best_match_similarity(qa, vb)
-                combined = (row["desc_score"] if review_score is None
-                            else alpha * row["desc_score"] + (1 - alpha) * review_score)
+                combined = dscore if review_score is None else alpha * dscore + (1 - alpha) * review_score
             results.append({
-                "appid": row["appid"],
-                "name": row["name"],
-                "review_score": row["review_score"],
+                "appid": aid,
+                "name": name,
+                "review_score": rscore,
                 "score": combined,
             })
 
         results.sort(key=lambda r: r["score"], reverse=True)
         return results[:n]
+
 
 
 

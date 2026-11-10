@@ -1,4 +1,7 @@
 # steam-game-discovery
+## NOTE
+Current recommender takes less than 10s for scoring based on description only and about 2min for scoring based on description and similiarity per query. Future plans to optimize that are incoming.
+
 ## Prerequisites  
 [Python](https://www.python.org/downloads/release/python-31410/)
 [Docker](https://www.docker.com/get-started/) 
@@ -80,4 +83,27 @@ steam-game-discovery/
 ├── requirements.txt
 └── README.md
 ```
+
+## Scoring algorithms
+The project converts texts into embedding using [bge-m3](https://huggingface.co/BAAI/bge-m3) model. When inputting a specific game vai their name or game id, it evaluates a similiarity score with every other game in the database and return the top n scorers. 
+Given:
+* game $A$
+* game $B$
+* description embedding of game $A$: $D_A$ 
+* description embedding of game $B$: $D_B$ 
+* i-th review embedding of game $A$: $a_i$
+* i-th review embedding of game $b$: $b_i$
+
+Description similiarity = $D = \cos(D_A, D_B)$ 
+
+Review similiarity with centroid = $R_C = \cos(\frac{\sum a_i}{n_a}, \frac{\sum b_j}{n_b})$ 
+
+Review similiarity with pairwise enumerate =  $R_P = \frac{\sum_i\sum_j \cos(a_i, b_j)}{n_an_b}$ 
+
+Review similiarity with best match pair =  $R_B = \frac{\sum_i\max_j \cos(a_i, b_j) + \sum_j\max_i \cos(a_i, b_j)}{n_a + n_b}$
+
+$Similiarity = \alpha D + (1-\alpha)R_{<C/P/B>}$
+
+Note: current code uses $R_B$ 
+
 

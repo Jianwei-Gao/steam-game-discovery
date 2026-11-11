@@ -227,7 +227,8 @@ class GameRecommender:
             scores = (row_max_sum + col_max_sum)/20.0
              
         else:
-            raise ValueError(method)
+            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST,
+                                detail=f"Method option {method} not exist")
 
         scores[query_index] = 0.0
         return appid, scores
@@ -312,14 +313,19 @@ class GameRecommender:
                 break
         return {aid: np.asarray(vecs, dtype=np.float32) for aid, vecs in buckets.items()}
     
-    def find_similar(self, id, n: int = 10, alpha: float = 1.0) -> list[dict]:
+    def find_similar(self, id, n: int = 10, alpha: float = 0.5, method: int = 0) -> list[dict]:
         """
         Return the top n games most similar to id.
 
         Args:
-            id: game appid (int / numeric str) or game name (any case).
-            n: number of results to return.
-
+            id: Game appid (int / numeric str) or game name (any case).
+            n: Number of results to return.
+            alpha: Weight of description vs review. Alpha inbetween 0 and 1.0 for similiarity score using game description and reiview; 1.0 for description only.
+            method: indicates which review similiarity metrics to use  
+                0 - centroid
+                1 - pairwise sum
+                2 - pairwise best match
+            
         Returns:
             List of dicts: {"appid", "name", "review_score", "score"}
         """
@@ -340,7 +346,7 @@ class GameRecommender:
             
         query_vec = np.asarray(query_point.vector, dtype=np.float32)
         desc_appid, name, review_scores, desc_sim = self._all_description_scores(query_vec)
-        review_appid, review_sim = self.review_similarity(appid, 2)
+        review_appid, review_sim = self.review_similarity(appid, method)
         
         desc_appid = np.asarray(desc_appid, dtype=np.int64)
         review_scores = np.asarray(review_scores, dtype=np.int64)

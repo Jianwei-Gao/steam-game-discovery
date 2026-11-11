@@ -1,14 +1,14 @@
 # steam-game-discovery
-## NOTE
-Current recommender takes less than 10s for scoring based on description only and about 2min for scoring based on description and similiarity per query. Future plans to optimize that are incoming.
 
 ## Prerequisites  
 [Python](https://www.python.org/downloads/release/python-31410/)
+
 [Docker](https://www.docker.com/get-started/) 
-If you want to try crawl the data yourself
+
+If you want to try crawl the data yourself\
 [Google Colab (highly recommended)](https://colab.research.google.com/) or [Jupyter (local run)](https://jupyter.org/)  
 ## Setup
-### 0. Download data from release and extract it into data/steam_data
+### 0. Download data from release and extract it into data/steam_data/
 OPTIONAL: If you want to try fetch the data yourself (takes around 2-3 days). You do not need to run these if you download the data from release. 
 ```
 pip install -r requirements.txt
@@ -22,6 +22,9 @@ python clean_data.py
 #local run, I recommend to run on collab with A100 gpu instead
 jupyter execute notebook.ipynb 
 ```
+
+### 0.1 Download cache from release and extrat it into backend/qdrant/
+Optional but reduces runtime for a first run query from about 2 minute to less than 10 seconds.
 
 ### 1. python environment
 ```
@@ -50,8 +53,8 @@ python qdrant_setup.py
 
 ### 3. Try recommender
 ```
-# Currently less than 5 second runtime for description similarity score only (alpha = 1.0) per query.
-# Currently about 2 min runtime for description + review similarity score only (alpha between 0 and 1.0 exclusive) per query. Future plans to optimize to reduce runtime.
+# Currently less than 10 second runtime for description similarity score only (alpha = 1.0) per query.
+# Currently about 2 min runtime for description + review similarity score (alpha between 0 and 1.0 exclusive) for first query. Then less than 10 second after.
 
 # Defaults to portal 2 and darksouls as query. Can edit main file for additional query. 
 cd backend
@@ -64,6 +67,7 @@ steam-game-discovery/
 ├── backend/
 │   ├── qdrant/
 │   │   └── compose.yaml   
+│   ├── *.pkl
 │   ├── qdrant_setup.py
 │   └── recommender.py
 ├── data/

@@ -10,7 +10,9 @@ Usage:
     rec.find_similar("620", n=5)          # appid as numeric string
 """
 
+import pickle
 import numpy as np 
+from pathlib import Path
 from functools import lru_cache
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -25,6 +27,10 @@ DESCRIPTION_COLLECTION = "game_descriptions"
 REVIEW_COLLECTION = "game_reviews"
 ZERO_GUARD = 1e-12
 SCROLL_SIZE = 50000
+
+FILE_DIR = Path(__file__).resolve().parent 
+DESC_CACHE_PATH = FILE_DIR / "desc_cache.pkl"
+REVIEW_CACHE_PATH = FILE_DIR / "review_cache.pkl"
 
 def _cosine(a: np.ndarray, b: np.ndarray) -> float:
     na = np.linalg.norm(a)
@@ -71,11 +77,15 @@ class GameRecommender:
             if offset is None:
                 break        
 
-    def _build_desc_cache(self) -> None:
+    def _build_desc_cache(self):
         if self._desc_cache is not None:
             return self._desc_cache
         
-        print("first desc call")
+        if DESC_CACHE_PATH.exists():
+            with open(DESC_CACHE_PATH, "rb") as f:
+                self._desc_cache = pickle.load(f)
+            return self._desc_cache
+        
         appids, names, review_score, vectors = [], [], [], []
         offset = None
         while True:
@@ -100,14 +110,21 @@ class GameRecommender:
             np.array(review_score, dtype=np.int64), 
             M
         )
-        print("return desc call")
+        
+        with open(DESC_CACHE_PATH, "wb") as f:
+            pickle.dump(self._desc_cache, f)
+                    
         return self._desc_cache
     
-    def _build_review_cache(self) -> None:
+    def _build_review_cache(self):
         if self._review_cache is not None:
             return self._review_cache
+                
+        if REVIEW_CACHE_PATH.exists():
+            with open(REVIEW_CACHE_PATH, "rb") as f:
+                self._review_cache = pickle.load(f)
+            return self._review_cache
         
-        print("first review call")
         buckets: dict[int, list] = {}
         offset = None
         while True:
@@ -136,7 +153,9 @@ class GameRecommender:
         centroid_norm = np.linalg.norm(mean_unit, axis=1)
         
         self._review_cache = (review_tensor, appids, mean_unit, centroid_norm)
-        print("return desc call")
+        with open(REVIEW_CACHE_PATH, "wb") as f:
+            pickle.dump(self._review_cache, f)
+
         return self._review_cache
 
     def get_appid(self, id) -> int:

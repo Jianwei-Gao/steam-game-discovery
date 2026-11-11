@@ -3,6 +3,7 @@
 .env
 *.zip
 *.7z
+*.pkl
 
 data/steam_data/*
 data/steam_state.db

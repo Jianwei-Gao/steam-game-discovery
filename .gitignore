@@ -11,3 +11,4 @@ data/steam_state/*.parquet
 !data/steam_data/.gitkeep
 
 qdrant_data
+__pycache__

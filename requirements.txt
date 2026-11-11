@@ -5,3 +5,4 @@ pyarrow
 python-dotenv
 qdrant_client
 Requests
+fastapi[standard]

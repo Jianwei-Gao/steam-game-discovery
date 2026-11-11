@@ -13,7 +13,7 @@ Usage:
 import pickle
 import numpy as np 
 from pathlib import Path
-from functools import lru_cache
+from fastapi import HTTPException, status
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Filter,
@@ -162,15 +162,17 @@ class GameRecommender:
         if isinstance(id, int):
             return id
         if isinstance(id, str):
-            s = id.strip()
+            s = id.strip().strip('\'')
             if s.isdigit():
                 return int(s)
             self._build_name_to_appid()
             appid = self._name_to_appid.get(s.lower())
             if appid is None:
-                raise ValueError(f"No game found with name: {id!r}")
+                raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST,
+                                    detail = f"No game found with name: {id!r}")
             return appid
-        raise TypeError(f"identifier must be int or str, got {type(id)!r}")
+        raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST,
+                            detail = f"identifier must be int or str, got {type(id)!r}")
 
     def get_point(self, appid: int) -> ScoredPoint:
         result = self.client.retrieve(
@@ -180,7 +182,8 @@ class GameRecommender:
             with_vectors=True,
         )
         if not result:
-            raise ValueError(f"No point found with appid {appid}")
+            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST,
+                                detail=f"No point found with appid {appid}")
         return result[0]
 
     def description_similarity(self, query_point: ScoredPoint, n: int) -> list[ScoredPoint]:
@@ -199,7 +202,8 @@ class GameRecommender:
     
         query_index = np.searchsorted(appid, query_appid)
         if query_index >= len(appid) or query_index < 0 or appid[query_index] != query_appid:
-            raise ValueError(f"No reviews cached for appid {query_appid}")
+            raise HTTPException(status_code = status.HTTP_400_BAD_REQUEST,
+                                detail=f"No reviews cached for appid {query_appid}")
         
         scores = None 
         #centroid

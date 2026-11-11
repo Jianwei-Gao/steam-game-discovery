@@ -64,7 +64,7 @@ python recommender.py
 ### 3.1 Try recommender in backend api
 ```
 cd backend 
-fastapi dev api.
+fastapi dev api.py
 
 #Or try in http://127.0.0.1:8000/docs
 curl "http://127.0.0.1:8000/query?id=portal%202"

@@ -203,7 +203,7 @@ def main():
     if "appid" in df_desc.columns:
         df_desc = df_desc.drop_duplicates(subset="appid", keep="first")
     df_desc.to_parquet(args.desc_out, index=False)
-    print(f"✔ Wrote {len(df_desc):,} description rows → {args.desc_out}")
+    print(f"Wrote {len(df_desc):,} description rows at {args.desc_out}")
 
     del desc_rows, df_desc
 
@@ -235,7 +235,7 @@ def main():
     if "appid" in df_rev.columns:
         df_rev = df_rev.drop_duplicates(subset="appid", keep="first")
     df_rev.to_parquet(args.review_out, index=False)
-    print(f"✔ Wrote {len(df_rev):,} review rows → {args.review_out}")
+    print(f"Wrote {len(df_rev):,} review rows at {args.review_out}")
 
 
 if __name__ == "__main__":

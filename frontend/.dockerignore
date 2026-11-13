@@ -1,0 +1,8 @@
+src/node_modules
+src/.next
+src/.git
+.git
+npm-debug.log
+Dockerfile.dev
+compose.yaml
+.dockerignore

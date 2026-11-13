@@ -6,3 +6,6 @@ python-dotenv
 qdrant_client
 Requests
 fastapi[standard]
+
+
+docker run --rm -v "${PWD}:/app" -w /app node:26 npx create-next-app@latest . --use-npm --typescript --eslint --tailwind --app

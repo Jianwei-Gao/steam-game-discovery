@@ -7,6 +7,7 @@
 
 If you want to try crawl the data yourself\
 [Google Colab (highly recommended)](https://colab.research.google.com/) or [Jupyter (local run)](https://jupyter.org/)  
+
 ## Setup
 ### 0. Download data from release and extract it into data/steam_data/
 OPTIONAL: If you want to try fetch the data yourself (takes around 2-3 days). You do not need to run these if you download the data from release. 

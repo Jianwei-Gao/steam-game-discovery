@@ -79,6 +79,11 @@ steam-game-discovery/
 │   ├── *.pkl
 │   ├── qdrant_setup.py
 │   └── recommender.py
+├── front/
+│   ├── *
+│   ├── .dockerignore
+│   ├── dockerfile
+│   └── docker-compose.yaml
 ├── data/
 │   ├── steam_data/
 │   │   ├── details/{appid}.json   
@@ -116,7 +121,3 @@ Review similiarity with pairwise enumerate =  $R_P = \frac{\sum_i\sum_j \cos(a_i
 Review similiarity with best match pair =  $R_B = \frac{\sum_i\max_j \cos(a_i, b_j) + \sum_j\max_i \cos(a_i, b_j)}{n_a + n_b}$
 
 $Similiarity = \alpha D + (1-\alpha)R_{<C/P/B>}$
-
-Note: current code uses $R_B$ 
-
-

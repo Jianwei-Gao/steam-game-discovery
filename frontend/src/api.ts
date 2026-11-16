@@ -1,24 +1,48 @@
 import type { ApiInput, Recommendation } from './types';
 
-const MOCK_DATA: Recommendation[] = [
-  {
-    appid: 400,
-    name: 'Portal',
-    review_score: 9,
-    score: 0.782860517501831,
-  },
-  {
-    appid: 2012320,
-    name: 'Parallel Experiment',
-    review_score: 8,
-    score: 0.7740064263343811,
-  },
-];
+const API_LINK = 'http://localhost:8000'
 
 export async function fetchDiscovery(params: ApiInput): Promise<Recommendation[]> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  const qs = new URLSearchParams({
+    id: String(params.id),
+    n: String(params.n),
+    alpha: String(params.alpha),
+    method: String(params.method),
+  });
 
-  console.log('fetchDiscovery params:', params);
+  let res: Response;
+  try {
+    res = await fetch(`${API_LINK}/query?${qs}`, {
+      method: 'GET',
+      headers: { accept: '*/*' },
+    });
+  } 
+  catch {
+    throw new Error('Error: could not reach the API.');
+  }
 
-  return MOCK_DATA
+  if (!res.ok) {
+    let detail = `Request failed with status ${res.status}`;
+    try {
+      const body: unknown = await res.json();
+      if (
+        body 
+        && typeof body === 'object' 
+        && 'detail' in body 
+        && typeof (body as { detail: unknown }).detail === 'string'
+      ) {
+        detail = (body as { detail: string }).detail;
+      }
+    } 
+    catch {
+      throw new Error('Unexpected Error: bad return from api.', {cause: detail});
+    }
+    throw new Error(detail);
+  }
+
+  const data: unknown = await res.json();
+  if (!Array.isArray(data)) {
+    throw new Error('Unexpected response shape from API.');
+  }
+  return data as Recommendation[];
 }

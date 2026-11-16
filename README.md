@@ -23,7 +23,7 @@ python clean_data.py
 jupyter execute notebook.ipynb 
 ```
 
-### 0.1 Download cache from release and extrat it into backend/qdrant/
+### 0.1 Download cache from release and extrat it into backend/cache/
 Optional but reduces runtime for a first run query from about 2 minute to less than 10 seconds.
 
 ### 1. python environment
@@ -44,20 +44,22 @@ docker compose up
 ### 3. Try recommender
 ```
 # Currently less than 10 second runtime for description similarity score only (alpha = 1.0) per query.
-# Currently about 2 min runtime for description + review similarity score (alpha between 0 and 1.0 exclusive) for first query. Then less than 10 second after.
+# Without cache, currently about 2 min runtime for description + review similarity score (alpha between 0 and 1.0 exclusive) for first query
+# With cache or after first query, less than 10 second per query.
 
-# Defaults to portal 2 and darksouls as query. Can edit main file for additional query. 
-cd backend
-python recommender.py 
-```
-
-### 3.1 Try recommender in backend api
-```
-cd backend 
-fastapi dev api.py
-
-#Or try in http://127.0.0.1:8000/docs
+# Example input for id "portal 2" and "570940" for darksouls
+#Can also open up http://127.0.0.1:8000/docs which lets you try apis in fastapi ui
 curl "http://127.0.0.1:8000/query?id=portal%202"
+curl "http://127.0.0.1:8000/query?id=570940"
+
+```
+
+### 4. Try recommender in frontend ui (still in developement)
+```
+cd frontend
+docker compose up
+
+#Open up http://127.0.0.1:5173/ in browser
 ```
 
 ## Project Structure

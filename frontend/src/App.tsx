@@ -138,7 +138,7 @@ export default function App() {
             <span>{game.appid}</span>
             <br />
             <img
-              src={`https://shared.steamstatic.com/store_item_assets/steam/apps/${game.appid}/capsule_616x353.jpg`}
+              src={`https://steamcdn-a.akamaihd.net/steam/apps/${game.appid}/header.jpg`}
               alt={game.name}
               width={616}
               height={353}

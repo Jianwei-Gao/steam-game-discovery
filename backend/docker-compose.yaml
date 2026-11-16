@@ -1,3 +1,5 @@
+name: steam-game-discovery
+
 services:
   qdrant:
     image: qdrant/qdrant:latest
@@ -27,7 +29,6 @@ services:
           cpus: "4"
           memory: 4g
 
-
   api:
     build:
       context: .
@@ -38,10 +39,6 @@ services:
       - qdrant
     ports:
       - "8000:8000"
-    environment:
-      QDRANT_HOST: qdrant
-      QDRANT_PORT: "6333"
-      QDRANT_URL: http://qdrant:6333
     volumes:
       - ./data/steam_data/:/app/data/steam_data/
       - ./api.py:/app/api.py
@@ -56,7 +53,6 @@ services:
         limits:
           cpus: "4"
           memory: 6g
-
 
 configs:
   qdrant_config:

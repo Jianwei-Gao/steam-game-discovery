@@ -1,10 +1,16 @@
 from fastapi import FastAPI 
 from pydantic import BaseModel
 from recommender import GameRecommender
+from fastapi.middleware.cors import CORSMiddleware
 
 engine = GameRecommender()
-
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class Recommendation(BaseModel):
     appid: int 

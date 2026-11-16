@@ -5,10 +5,10 @@
 *.7z
 *.pkl
 
-data/steam_data/*
-data/steam_state.db
-data/steam_state/*.parquet
-!data/steam_data/.gitkeep
+backend/data/steam_data/*
+backend/data/steam_state.db
+backend/data/steam_data/*.parquet
+!backend/data/steam_data/.gitkeep
 
 qdrant_data
 __pycache__

@@ -16,7 +16,14 @@ class Recommendation(BaseModel):
 def root():
     return {"msg": "hello world"}
 
-@app.get("/query", response_model=list[Recommendation])
+@app.get("/query", 
+         response_model=list[Recommendation],
+         responses={
+             400: {
+                 "description": "bad request"
+             }
+         }
+         )
 def query_game(id: int | str, n: int = 10, alpha:float = 0.5, method:int = 0):
     """
     Return the top n games most similar to id.

@@ -1,0 +1,64 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: always
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    expose:
+      - 6333
+      - 6334
+      - 6335
+    configs:
+      - source: qdrant_config
+        target: /qdrant/config/production.yaml
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6333 && :> /dev/tcp/127.0.0.1/6334' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4g
+
+
+  api:
+    build:
+      context: .
+      dockerfile: dockerfile 
+    restart: always
+    container_name: api
+    depends_on:
+      - qdrant
+    ports:
+      - "8000:8000"
+    environment:
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+      QDRANT_URL: http://qdrant:6333
+    volumes:
+      - ./data/steam_data/:/app/data/steam_data/
+      - ./api.py:/app/api.py
+      - ./qdrant_setup.py:/app/qdrant_setup.py
+      - ./recommender.py:/app/recommender.py
+      - ./cache:/app/cache/
+
+    command: >
+      sh -c "python qdrant_setup.py && fastapi dev api.py --host 0.0.0.0 --port 8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 6g
+
+
+configs:
+  qdrant_config:
+    content: |
+      log_level: INFO

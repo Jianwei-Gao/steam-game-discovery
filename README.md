@@ -8,11 +8,11 @@
 If you want to try crawl the data yourself\
 [Google Colab (highly recommended)](https://colab.research.google.com/) or [Jupyter (local run)](https://jupyter.org/)  
 ## Setup
-### 0. Download data from release and extract it into data/steam_data/
+### 0. Download data from release and extract it into backend/data/steam_data/
 OPTIONAL: If you want to try fetch the data yourself (takes around 2-3 days). You do not need to run these if you download the data from release. 
 ```
 pip install -r requirements.txt
-cd data
+cd backend/data
 
 #Edit .env.example into .env, add your own steam api key (more info https://steamcommunity.com/dev) 
 python build_queue.py 
@@ -33,22 +33,12 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 2.1 Start up Qdrant embedding database in docker 
+### 2 Start up Qdrant embedding database and fastapi server in docker 
 ```
-cd backend/qdrant
-# Starting the database in docker container
-docker compose -f backend/qdrant/compose.yaml up -d
-
-# Stop the database in docker container
-docker compose -f backend/qdrant/compose.yaml down
-
-```
-
-### 2.2 Insert embedding into database
-```
-# Insert embedding data into database (need docker container  up)
+#takes around 5 minute for first compose up
+#creator allocate 8 cpu core and 8gb memory allocated for docker engine, may get away with less
 cd backend
-python qdrant_setup.py
+docker compose up
 ```
 
 ### 3. Try recommender

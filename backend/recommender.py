@@ -29,8 +29,8 @@ ZERO_GUARD = 1e-12
 SCROLL_SIZE = 50000
 
 FILE_DIR = Path(__file__).resolve().parent 
-DESC_CACHE_PATH = FILE_DIR / "desc_cache.pkl"
-REVIEW_CACHE_PATH = FILE_DIR / "review_cache.pkl"
+DESC_CACHE_PATH = FILE_DIR / "cache" / "desc_cache.pkl"
+REVIEW_CACHE_PATH = FILE_DIR / "cache" / "review_cache.pkl"
 
 def _cosine(a: np.ndarray, b: np.ndarray) -> float:
     na = np.linalg.norm(a)
@@ -48,7 +48,7 @@ def _pairwise_cosine(va: np.ndarray, vb: np.ndarray) -> np.ndarray:
 
 class GameRecommender:
     def __init__(self, client: QdrantClient | None = None):
-        self.client = client or QdrantClient(host="localhost", port=6333, grpc_port=6334, prefer_grpc=True, timeout=30.0)
+        self.client = client or QdrantClient(host="qdrant", port=6333, grpc_port=6334, prefer_grpc=True, timeout=30.0)
         self._name_to_appid: dict[str, int] | None = None 
         self._desc_cache = None 
         self._review_cache = None 

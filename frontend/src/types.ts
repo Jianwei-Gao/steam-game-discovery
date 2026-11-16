@@ -13,3 +13,9 @@ export interface Recommendation {
   review_score: number;
   score: number;
 }
+
+export interface GameListItem {
+  appid: number;
+  name: string;
+  short_description: string;
+}

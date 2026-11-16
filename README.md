@@ -36,7 +36,7 @@ pip install -r requirements.txt
 ### 2 Start up Qdrant embedding database and fastapi server in docker 
 ```
 #takes around 5 minute for first compose up
-#creator allocate 8 cpu core and 8gb memory allocated for docker engine, may get away with less
+#creator allocated 8 cpu core and 8gb memory allocated for docker engine, may get away with less
 cd backend
 docker compose up
 ```
@@ -64,29 +64,33 @@ curl "http://127.0.0.1:8000/query?id=portal%202"
 ```
 steam-game-discovery/
 ├── backend/
-│   ├── qdrant/
-│   │   └── compose.yaml   
-│   ├── *.pkl
+│   ├── data/
+│   │   ├── steam_data/
+│   │   │   ├── details/{appid}.json   
+│   │   │   ├── reviews/{appid}.json 
+│   │   │   ├── descriptions_embedding.parquet
+│   │   │   ├── descriptions.parquet
+│   │   │   ├── reviews_embedding.parquet
+│   │   │   └── reviews.parquet
+│   │   ├── .env.example
+│   │   ├── build_queue.py
+│   │   ├── clean_data.py
+│   │   ├── embed.ipynb
+│   │   └── fetch_data.py
+│   ├── cache/
+│   │   └── *.pkl # description and review cache generated when running recommender.py 
+│   ├── qdrant_data/* # qdrant database data generated when running qdrant database in docker
+│   ├── api.py
 │   ├── qdrant_setup.py
-│   └── recommender.py
-├── front/
+│   ├── recommender.py
+│   ├── .dockerignore
+│   ├── dockerfile
+│   └── docker-compose.yaml
+├── frontend/
 │   ├── *
 │   ├── .dockerignore
 │   ├── dockerfile
 │   └── docker-compose.yaml
-├── data/
-│   ├── steam_data/
-│   │   ├── details/{appid}.json   
-│   │   ├── reviews/{appid}.json 
-│   │   ├── descriptions_embedding.parquet
-│   │   ├── descriptions.parquet
-│   │   ├── reviews_embedding.parquet
-│   │   └── reviews.parquet
-│   ├── .env.example
-│   ├── build_queue.py
-│   ├── clean_data.py
-│   ├── embed.ipynb
-│   └── fetch_data.py
 ├── .gitignore
 ├── requirements.txt
 └── README.md
